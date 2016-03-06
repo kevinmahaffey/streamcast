@@ -13,7 +13,7 @@ type Frame struct {
 	Data     []byte
 }
 
-const MAX_FRAME_LENGTH int = 1400
+const MAX_FRAME_LENGTH = 1400
 
 func (f *Frame) Read(b []byte) (err error) {
 	var length uint16
