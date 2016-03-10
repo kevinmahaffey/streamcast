@@ -4,16 +4,16 @@ import (
 	"fmt"
 	"github.com/kevinmahaffey/streamcast"
 	"os"
+	"time"
 )
 
 func main() {
-	err, rx := streamcast.NewBroadcastRx(os.Args[1], 1337)
+	rx, err := streamcast.NewRxIsochronous(os.Args[1], os.Args[2], 1337, 100 * time.Millisecond, 5 * time.Millisecond)
 	if err != nil {
 		panic(err)
 	}
-	var data [10000]byte
 	for {
-		n, err := rx.Read(data[:])
+		n, err := rx.Read()
 		if err != nil {
 			panic(err)
 		}

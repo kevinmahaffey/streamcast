@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"time"
+	"errors"
 )
 
 type rxTimeout struct{}
@@ -20,9 +21,9 @@ func (e *rxTimeout) Temporary() bool { return true }
 // 4.
 // - Receive a certain number of frames per second, with a max latency
 // - If frames do not arrive by deadline drop and move to next
+
 type RxIsochronous struct {
-	conn        *net.UDPConn
-	addr        *net.UDPAddr
+	conn        RxConn
 	cache       *FrameCache
 	framePeriod time.Duration
 	buffer      time.Duration
@@ -31,17 +32,31 @@ type RxIsochronous struct {
 	nextFrameId uint32
 }
 
-func NewBroadcastRxIsochronous(network string, port int, framePeriod time.Duration, buffer time.Duration) (r *RxIsochronous, err error) {
-	addr, err := net.ResolveUDPAddr("udp4", fmt.Sprintf("%s:%d", network, port))
+
+func NewRxIsochronous(protocol string, network string, port int, framePeriod time.Duration, buffer time.Duration) (r *RxIsochronous, err error) {
+	var conn 	RxConn
+	netPort := fmt.Sprintf("%s:%d", network, port)
+	switch protocol {
+		case "tcp":
+			tcpConn 			 		 := new(TcpRxConn)
+			tcpConn.addr, err 	= net.ResolveTCPAddr(protocol, netPort)
+			conn = tcpConn
+	case "udp":
+			udpConn 					 := new(UdpRxConn)
+			udpConn.addr, err 	= net.ResolveUDPAddr(protocol, netPort)
+			conn = udpConn
+		default:
+			err = errors.New(fmt.Sprintf("Unsupported Protocol: %s.", protocol))
+	}
 	if err != nil {
 		return nil, err
 	}
-	return NewRxIsochronous(addr, framePeriod, buffer)
+	return InitRxIsochronous(conn, framePeriod, buffer)
 }
 
-func NewRxIsochronous(addr *net.UDPAddr, framePeriod time.Duration, buffer time.Duration) (r *RxIsochronous, err error) {
+func InitRxIsochronous(rxConn RxConn, framePeriod time.Duration, buffer time.Duration) (r *RxIsochronous, err error) {
 	r = new(RxIsochronous)
-	r.addr = addr
+	r.conn = rxConn
 	err = r.Reset()
 	if err != nil {
 		return nil, err
@@ -57,14 +72,7 @@ func NewRxIsochronous(addr *net.UDPAddr, framePeriod time.Duration, buffer time.
 }
 
 func (r *RxIsochronous) Reset() (err error) {
-	if r.conn != nil {
-		r.conn.Close()
-	}
-	r.conn, err = net.ListenUDP("udp4", r.addr)
-	if err != nil {
-		return err
-	}
-	return
+	return r.conn.Reset()
 }
 
 func (r *RxIsochronous) NextDeadlineFromNow() time.Time {
@@ -125,7 +133,7 @@ func (r *RxIsochronous) Read() (f *Frame, err error) {
 
 		f = new(Frame)
 		var b [MAX_FRAME_LENGTH]byte
-		n, _, err := r.conn.ReadFromUDP(b[:])
+		n, err := r.conn.Read(b[:])
 
 		// Timeout, report buffer underrun
 		neterr, ok := err.(net.Error)

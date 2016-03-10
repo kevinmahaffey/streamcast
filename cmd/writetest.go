@@ -6,9 +6,9 @@ import (
 )
 
 func main() {
-	err, src := streamcast.NewBroadcastTx(os.Args[1], 1337)
+	err, src := streamcast.NewUdpTx(os.Args[1], 1337, 3)
 	if err != nil {
 		panic(err)
 	}
-	src.Write([]byte{1, 2, 3})
+	src.Write([]byte{4,5,6}, []byte{1, 2, 3})
 }
