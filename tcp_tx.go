@@ -6,22 +6,22 @@ import (
 )
 
 type TcpTx struct {
-  addr         string
-  tcpServer   *TcpServer
-	currentId    uint32
-	timeout      time.Duration
+	addr      string
+	tcpServer *TcpServer
+	currentId uint32
+	timeout   time.Duration
 }
 
-func NewTcpTx(network string, port int) (err error, s *TcpTx) {
-  addr := fmt.Sprintf("%s:%d", network, port)
+func NewTcpTx(network string, port int) (s *TcpTx, err error) {
+	addr := fmt.Sprintf("%s:%d", network, port)
 	s = new(TcpTx)
 	s.addr = addr
 	err, s.tcpServer = StartTcpServer(addr)
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 	s.currentId = 1
-	s.timeout 	= 1 * time.Second
+	s.timeout = 1 * time.Second
 
 	return
 }
@@ -33,7 +33,7 @@ func (s *TcpTx) WriteFrame(f *Frame) (err error) {
 	if err != nil {
 		return err
 	}
-  s.tcpServer.Broadcast(b[:n])
+	s.tcpServer.Broadcast(b[:n])
 	return
 }
 

@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-type Tx struct {
+type UdpTx struct {
 	conn         net.PacketConn
 	addr         net.Addr
 	copiesToSend int
@@ -14,20 +14,16 @@ type Tx struct {
 	timeout      time.Duration
 }
 
-func NewUdpTx(network string, port int, copiesToSend int) (err error, s *Tx) {
+func NewUdpTx(network string, port int, copiesToSend int) (s *UdpTx, err error) {
 	addr, err := net.ResolveUDPAddr("udp4", fmt.Sprintf("%s:%d", network, port))
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
-	return NewTx(addr, copiesToSend)
-}
-
-func NewTx(addr net.Addr, copiesToSend int) (err error, s *Tx) {
-	s = new(Tx)
+	s = new(UdpTx)
 	s.addr = addr
 	s.conn, err = net.ListenPacket("udp4", "0.0.0.0:0")
 	if err != nil {
-		return err, nil
+		return nil, err
 	}
 	s.currentId = 1
 	s.copiesToSend = copiesToSend
@@ -36,7 +32,7 @@ func NewTx(addr net.Addr, copiesToSend int) (err error, s *Tx) {
 	return
 }
 
-func (s *Tx) WriteFrame(f *Frame) (err error) {
+func (s *UdpTx) WriteFrame(f *Frame) (err error) {
 	var b [MAX_FRAME_LENGTH]byte
 	s.conn.SetDeadline(time.Now().Add(s.timeout))
 
@@ -56,7 +52,7 @@ func (s *Tx) WriteFrame(f *Frame) (err error) {
 	return
 }
 
-func (s *Tx) Write(metadata []byte, data []byte) (err error) {
+func (s *UdpTx) Write(metadata []byte, data []byte) (err error) {
 	var f Frame
 	f.Data = data
 	f.Metadata = metadata
@@ -66,10 +62,10 @@ func (s *Tx) Write(metadata []byte, data []byte) (err error) {
 	return
 }
 
-func (s *Tx) SetTimeout(t time.Duration) {
+func (s *UdpTx) SetTimeout(t time.Duration) {
 	s.timeout = t
 }
 
-func (t *Tx) Close() {
+func (t *UdpTx) Close() {
 	t.conn.Close()
 }

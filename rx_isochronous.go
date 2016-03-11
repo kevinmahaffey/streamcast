@@ -1,11 +1,11 @@
 package streamcast
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net"
 	"time"
-	"errors"
 )
 
 type rxTimeout struct{}
@@ -32,21 +32,20 @@ type RxIsochronous struct {
 	nextFrameId uint32
 }
 
-
 func NewRxIsochronous(protocol string, network string, port int, framePeriod time.Duration, buffer time.Duration) (r *RxIsochronous, err error) {
-	var conn 	RxConn
+	var conn RxConn
 	netPort := fmt.Sprintf("%s:%d", network, port)
 	switch protocol {
-		case "tcp":
-			tcpConn 			 		 := new(TcpRxConn)
-			tcpConn.addr, err 	= net.ResolveTCPAddr(protocol, netPort)
-			conn = tcpConn
+	case "tcp":
+		tcpConn := new(TcpRxConn)
+		tcpConn.addr, err = net.ResolveTCPAddr(protocol, netPort)
+		conn = tcpConn
 	case "udp":
-			udpConn 					 := new(UdpRxConn)
-			udpConn.addr, err 	= net.ResolveUDPAddr(protocol, netPort)
-			conn = udpConn
-		default:
-			err = errors.New(fmt.Sprintf("Unsupported Protocol: %s.", protocol))
+		udpConn := new(UdpRxConn)
+		udpConn.addr, err = net.ResolveUDPAddr(protocol, netPort)
+		conn = udpConn
+	default:
+		err = errors.New(fmt.Sprintf("Unsupported Protocol: %s.", protocol))
 	}
 	if err != nil {
 		return nil, err

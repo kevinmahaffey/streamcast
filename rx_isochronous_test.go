@@ -12,7 +12,7 @@ const TO uint32 = 0
 // Send packets and verify they are received.
 func sendIsoc(t *testing.T, duplication int, send []Packet) {
 	go func() {
-		err, tx := NewBroadcastTx("127.0.0.1", 8888, duplication)
+		tx, err := NewUdpTx("127.0.0.1", 8888, duplication)
 		if err != nil {
 			t.Error(err)
 			return
@@ -32,7 +32,7 @@ func sendIsoc(t *testing.T, duplication int, send []Packet) {
 }
 
 func expectIsoc(t *testing.T, duplication int, period time.Duration, maxLatency time.Duration, send []Packet, receive []uint32) {
-	rx, err := NewBroadcastRxIsochronous("127.0.0.1", 8888, period, maxLatency)
+	rx, err := NewRxIsochronous("udp", "127.0.0.1", 8888, period, maxLatency)
 	if err != nil {
 		t.Error(err)
 		return
@@ -137,7 +137,7 @@ func TestReceiveWithTimeout(t *testing.T) {
 }
 
 func TestShouldReturn0DeadlineBeforeRead(t *testing.T) {
-	rx, _ := NewBroadcastRxIsochronous("127.0.0.1", 8888,
+	rx, _ := NewRxIsochronous("udp", "127.0.0.1", 8888,
 		1*time.Millisecond, // period
 		2*time.Millisecond) // max latency
 
@@ -152,7 +152,7 @@ func TestShouldSetAppropriateDeadline(t *testing.T) {
 	latency := 2 * time.Millisecond
 	fudge := 100 * time.Microsecond
 
-	rx, err := NewBroadcastRxIsochronous("127.0.0.1", 8888,
+	rx, err := NewRxIsochronous("udp", "127.0.0.1", 8888,
 		1*time.Millisecond, // period
 		2*time.Millisecond) // max latency
 	if err != nil {
@@ -164,5 +164,25 @@ func TestShouldSetAppropriateDeadline(t *testing.T) {
 
 	if deadline > latency+period || deadline < (latency+period)-fudge {
 		t.Errorf("deadline was %d", deadline)
+	}
+}
+
+func TestTCP(t *testing.T) {
+	tx, err := NewTx("tcp", "127.0.0.1", 8888)
+	if err != nil {
+		t.Error(err)
+	}
+	rx, err := NewRxIsochronous("tcp", "127.0.0.1", 8888, 100*time.Microsecond, 1*time.Millisecond)
+	if err != nil {
+		t.Error(err)
+	}
+	f := makeFrame(1)
+	tx.Write(f.Metadata, f.Data)
+	rxf, err := rx.Read()
+	if err != nil {
+		t.Error(err)
+	}
+	if extractDataPayload(rxf.Data) != 1 {
+		t.Errorf("Received incorrect frame")
 	}
 }
